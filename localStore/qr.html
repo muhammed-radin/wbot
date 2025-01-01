@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR CODE</title>
+
+    <style>
+      #qr img {
+        width: 400px;
+      }
+
+      @media screen and (max-width: 550px) {
+        #qr img {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="getQR()" style="padding: 6px">GET QR Code</button>
+    <button onclick="location.reload()" style="padding: 6px">Refresh</button>
+    <div id="qr"></div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+      integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      const URL_ENDPOINT = "//localhost:3000/";
+
+      function getQR() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", URL_ENDPOINT);
+        xhr.addEventListener("readystatechange", () => {
+          if (xhr.readyState == xhr.DONE) {
+            console.log(xhr.response);
+            if (xhr.status == 200) {
+              document.getElementById("qr").innerHTML = "";
+              new QRCode(document.getElementById("qr"), xhr.response);
+            }
+          }
+        });
+
+        xhr.send();
+      }
+
+      const eventSource = new EventSource("/qr");
+
+      eventSource.onmessage = (event) => {
+        document.getElementById("qr").innerHTML = "";
+        new QRCode(document.getElementById("qr"), JSON.parse(event.data).qr);
+      };
+
+      eventSource.onerror = () => {
+        console.error("Error with SSE connection");
+      };
+    </script>
+  </body>
+</html>

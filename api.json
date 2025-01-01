@@ -1,0 +1,12 @@
+{
+    "endpoints": [
+        "/",
+        "/qr",
+        "/events",
+        "/send/:phoneID"
+    ],
+    "pages": [
+        "pages/index.html",
+        "pages/qr.html"
+    ]
+}

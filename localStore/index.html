@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <meta name="Access-Control-Allow-Origin" content="//192.168.103.96:3000" />
+  </head>
+  <body>
+    <input type="tel" id="phone" /><button onclick="send()">send</button>
+
+    <script>
+      const URL_ENDPOINT = "//localhost:3000/send/";
+
+      function send() {
+        var ph = document.getElementById("phone").value;
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", URL_ENDPOINT + ph);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.addEventListener("readystatechange", () => {
+          if (xhr.readyState == xhr.DONE) {
+            console.log(xhr.response);
+          }
+        });
+
+        xhr.send(
+          JSON.stringify({
+            msg: "hi",
+          })
+        );
+      }
+    </script>
+  </body>
+</html>
