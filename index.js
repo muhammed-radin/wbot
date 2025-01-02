@@ -5,7 +5,11 @@ const qrcode = require("qrcode-terminal");
 const pages = require("./pages");
 const localData = {};
 
-const client = new Client();
+const client = new Client({
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -17,15 +21,15 @@ client.once("ready", () => {
 
   app.post(
     "/send/:phoneID",
-    function (req, res, next) {
+    function(req, res, next) {
       const phone = req.params.phoneID;
       console.log(req.body);
 
-      client.sendMessage(phone + "@c.us", req.body.msg).then(function () {
+      client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
         next();
       });
     },
-    function (req, res) {
+    function(req, res) {
       res.sendStatus(200);
       console.log("API LOGS");
     }
@@ -41,11 +45,11 @@ app.get("/qr", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   res.write(qr_code);
-  var timer = setInterval(function () {
+  var timer = setInterval(function() {
     res.write(`data: ${JSON.stringify({ qr: qr_code })} \n\n`);
   }, 2000);
 
-  req.on("close", function () {
+  req.on("close", function() {
     clearInterval(timer);
   });
 });
@@ -56,7 +60,7 @@ client.on("qr", (qr) => {
   qrcode.generate(qr, { small: true });
   qr_code = qr;
 
-  app.get("/", function (req, res) {
+  app.get("/", function(req, res) {
     res.send(qr);
   });
 });
@@ -82,7 +86,7 @@ app.get("/events", (req, res) => {
 
   client.on("message_create", handleMessages);
 
-  req.on("close", function () {
+  req.on("close", function() {
     client.off("message_create", handleMessages);
   });
 });
