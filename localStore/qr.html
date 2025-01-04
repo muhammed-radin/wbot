@@ -46,7 +46,7 @@
         xhr.send();
       }
 
-      const eventSource = new EventSource(URL_ENDPOINT+"/qr");
+      const eventSource = new EventSource(URL_ENDPOINT+"qr");
 
       eventSource.onmessage = (event) => {
         document.getElementById("qr").innerHTML = "";
