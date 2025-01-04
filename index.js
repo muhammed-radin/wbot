@@ -4,6 +4,8 @@ const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const pages = require("./pages");
 const localData = {};
+const cors = require("cors");
+
 
 const client = new Client({
   puppeteer: {
@@ -11,6 +13,7 @@ const client = new Client({
   }
 });
 
+app.use(cors())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/pages", pages);
