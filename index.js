@@ -59,10 +59,10 @@ client.on("qr", (qr) => {
   console.log(qr);
   qrcode.generate(qr, { small: true });
   qr_code = qr;
+});
 
-  app.get("/", function(req, res) {
-    res.send(qr);
-  });
+app.get("/", function(req, res) {
+  res.send(qr_code);
 });
 
 // Start your client

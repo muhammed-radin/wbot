@@ -28,7 +28,7 @@
       referrerpolicy="no-referrer"
     ></script>
     <script>
-      const URL_ENDPOINT = "//localhost:3000/";
+      const URL_ENDPOINT = "https://wbot-bodg.onrender.com/";
 
       function getQR() {
         var xhr = new XMLHttpRequest();
@@ -46,14 +46,15 @@
         xhr.send();
       }
 
-      const eventSource = new EventSource("/qr");
+      const eventSource = new EventSource(URL_ENDPOINT+"/qr");
 
       eventSource.onmessage = (event) => {
         document.getElementById("qr").innerHTML = "";
         new QRCode(document.getElementById("qr"), JSON.parse(event.data).qr);
       };
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (err) => {
+        console.log(err)
         console.error("Error with SSE connection");
       };
     </script>
