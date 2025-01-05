@@ -13,6 +13,12 @@ const client = new Client({
   }
 });
 
+const writed = [];
+
+function hype(write) {
+  writed.push({write, date: new Date().toString()})
+}
+
 app.use(cors())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -21,12 +27,14 @@ app.use("/pages", pages);
 // When the client is ready, run this code (only once)
 client.once("ready", () => {
   console.log("Client is ready!");
+  hype('Client is ready')
 
   app.post(
     "/send/:phoneID",
     function(req, res, next) {
       const phone = req.params.phoneID;
       console.log(req.body);
+      hype('Mannual message sending to '+phone);
 
       client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
         next();
@@ -57,11 +65,14 @@ app.get("/qr", (req, res) => {
   });
 });
 
+app.get('/writed', function (req, res) {
+  res.json(writed);
+})
+
 // When the client received QR-Code
 client.on("qr", (qr) => {
-  console.log(qr);
-  qrcode.generate(qr, { small: true });
   qr_code = qr;
+  hype('QR Code ready')
 });
 
 app.get("/", function(req, res) {
@@ -83,6 +94,7 @@ app.get("/events", (req, res) => {
     console.log(message.from);
     console.log(message.body);
     console.log(message.fromMe);
+    hype('New message found.')
 
     res.write(`data: ${JSON.stringify(message)} \n\n`);
   }
