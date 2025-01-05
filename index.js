@@ -16,7 +16,11 @@ const client = new Client({
 const writed = [];
 
 function hype(write) {
-  writed.push({write, date: new Date().toString()})
+  if ((writed[writed.length - 1]) == write) {
+    writed[writed.length - 1] = { write, date: new Date().toString() }
+  } else {
+    writed.push({ write, date: new Date().toString() })
+  }
 }
 
 app.use(cors())
@@ -34,7 +38,7 @@ client.once("ready", () => {
     function(req, res, next) {
       const phone = req.params.phoneID;
       console.log(req.body);
-      hype('Mannual message sending to '+phone);
+      hype('Mannual message sending to ' + phone);
 
       client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
         next();
@@ -65,7 +69,7 @@ app.get("/qr", (req, res) => {
   });
 });
 
-app.get('/writed', function (req, res) {
+app.get('/writed', function(req, res) {
   res.json(writed);
 })
 
