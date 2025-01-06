@@ -16,11 +16,7 @@ const client = new Client({
 const writed = [];
 
 function hype(write) {
-  if ((writed[writed.length - 1]) == write) {
-    writed[writed.length - 1] = { write, date: new Date().toString() }
-  } else {
-    writed.push({ write, date: new Date().toString() })
-  }
+  writed.push({ write, date: new Date().toString() })
 }
 
 app.use(cors())
