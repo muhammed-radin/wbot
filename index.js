@@ -27,7 +27,7 @@ app.use("/pages", pages);
 
 
 setInterval(() => {
-    http.get('https://wbot-bodg.onrender.com');
+    http.get('https://wbot-bodg.onrender.com/');
 }, 60000);
 
 // When the client is ready, run this code (only once)
