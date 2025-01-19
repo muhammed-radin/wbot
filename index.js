@@ -5,6 +5,7 @@ const qrcode = require("qrcode-terminal");
 const pages = require("./pages");
 const localData = {};
 const cors = require("cors");
+const http = require('http');
 
 
 const client = new Client({
@@ -23,6 +24,11 @@ app.use(cors())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/pages", pages);
+
+
+setInterval(() => {
+    http.get('https://wbot-bodg.onrender.com');
+}, 60000);
 
 // When the client is ready, run this code (only once)
 client.once("ready", () => {
