@@ -83,6 +83,7 @@ client.on("qr", (qr) => {
 
 app.get("/", function(req, res) {
   res.send(qr_code);
+  console.log('UPDATED')
 });
 
 // Start your client
