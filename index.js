@@ -15,8 +15,16 @@ const client = new Client({
 });
 
 const writed = [];
+let msgData = {
+  sendCount: 0,
+  messagesCount: 0,
+  isClientLogged: false,
+}
 
 function hype(write) {
+  if (writed.length > 200) {
+    writed.splice(0, 50)
+  }
   writed.push({ write, date: new Date().toString() })
 }
 
@@ -27,11 +35,12 @@ app.use("/pages", pages);
 
 
 setInterval(() => {
-    https.get('https://wbot-bodg.onrender.com/');
+  https.get('https://wbot-bodg.onrender.com/');
 }, 30000);
 
 // When the client is ready, run this code (only once)
 client.once("ready", () => {
+  msgData.isClientLogged = true;
   console.log("Client is ready!");
   hype('Client is ready')
 
@@ -39,10 +48,10 @@ client.once("ready", () => {
     "/send/:phoneID",
     function(req, res, next) {
       const phone = req.params.phoneID;
-      console.log(req.body);
       hype('Mannual message sending to ' + phone);
 
       client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
+        msgData.sendCount += 1;
         next();
       });
     },
@@ -86,6 +95,10 @@ app.get("/", function(req, res) {
   console.log('UPDATED')
 });
 
+app.get('/status', function(req, res) {
+  res.send(msgData)
+})
+
 // Start your client
 client.initialize();
 
@@ -98,9 +111,7 @@ app.get("/events", (req, res) => {
   res.write("");
 
   function handleMessages(message) {
-    console.log(message.from);
-    console.log(message.body);
-    console.log(message.fromMe);
+    msgData.messagesCount += 1;
     hype('New message found.')
 
     res.write(`data: ${JSON.stringify(message)} \n\n`);
