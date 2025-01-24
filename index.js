@@ -1,10 +1,10 @@
-const express = require( "express");
+const express = require("express");
 const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
-const qrcode = require( "qrcode-terminal");
+const qrcode = require("qrcode-terminal");
 const pages = require("./pages.js");
 const cors = require("cors");
-const https = require( "https");
-const { runAi } = import( "./ai.mjs");
+const https = require("https");
+const { runAi } = import("./ai.mjs");
 
 const app = express();
 const localData = {};
@@ -110,16 +110,6 @@ app.post('/activateAI/:bool', function(req, res) {
 })
 
 
-client.on("message_create", function(msg) {
-  if (msgData.activateAi && msg.fromMe == false) {
-    runAi(msg.body).then(function(answer) {
-      client.sendMessage(msg.id.remote, answer).then(function() {
-        msgData.sendCount += 1;
-      });
-    })
-  }
-});
-
 
 // Start your client
 client.initialize();
@@ -135,6 +125,14 @@ app.get("/events", (req, res) => {
   function handleMessages(message) {
     msgData.messagesCount += 1;
     hype('New message found.');
+
+    if (msgData.activateAi && message.fromMe == false) {
+      runAi(message.body).then(function(answer) {
+        client.sendMessage(message.id.remote, answer).then(function() {
+          msgData.sendCount += 1;
+        });
+      })
+    }
 
     res.write(`data: ${JSON.stringify(message)} \n\n`);
   }
