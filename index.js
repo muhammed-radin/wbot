@@ -1,5 +1,9 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+
 import express from "express";
-import { Client, LocalAuth, AuthStrategy, Buttons } from "whatsapp-web.js";
+const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
 import qrcode from "qrcode-terminal";
 import pages from "./pages.js";
 import cors from "cors";
@@ -8,6 +12,7 @@ import { runAi } from "./ai.js";
 
 const app = express();
 const localData = {};
+
 
 
 const client = new Client({
