@@ -1,14 +1,10 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-
-
-import express from "express";
+const express = require( "express");
 const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
-import qrcode from "qrcode-terminal";
+const qrcode = require( "qrcode-terminal");
 const pages = require("./pages.js");
 const cors = require("cors");
-import https from "https";
-import { runAi } from "./ai.js";
+const https = require( "https");
+const { runAi } = require( "./ai.mjs");
 
 const app = express();
 const localData = {};
