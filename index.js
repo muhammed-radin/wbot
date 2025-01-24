@@ -126,13 +126,20 @@ app.get("/events", (req, res) => {
     msgData.messagesCount += 1;
     hype('New message found.');
 
-    if (msgData.activateAi && message.fromMe == false) {
+
+    if (!message.fromMe) {
+      hype('This message for me')
       runAi(message.body).then(function(answer) {
+        hype('Remoted '+message.id.remote);
+        hype('AI Response: '+answer)
         client.sendMessage(message.id.remote, answer).then(function() {
           msgData.sendCount += 1;
+          hype('Message sended by AI')
         });
       })
     }
+    
+    hype('Signal Good')
 
     res.write(`data: ${JSON.stringify(message)} \n\n`);
   }
