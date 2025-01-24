@@ -1,4 +1,4 @@
-import { Client } from "@gradio/client";
+import { Client } from "./package/dist/index.js";
 
 const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");;
 let history = [["Hello!", 'How can help you?'], ['Which year started Bushido?', 'Since 2016']]
