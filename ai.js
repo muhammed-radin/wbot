@@ -1,12 +1,8 @@
 import { Client } from "@gradio/client";
 
-let client = null;
+const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");;
 let history = [["Hello!", 'How can help you?'], ['Which year started Bushido?', 'Since 2016']]
 
-
-(async function(qes) {
-  client = await Client.connect("Qwen/Qwen2.5-Coder-demo");
-})();
 
 
 async function runAi(qes) {
