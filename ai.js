@@ -1,4 +1,4 @@
-const { Client } = require("@gradio/client");
+import { Client } from "@gradio/client";
 
 let client = null;
 let history = [["Hello!", 'How can help you?'], ['Which year started Bushido?', 'Since 2016']]
@@ -33,4 +33,10 @@ function handleErr(err) {
   console.log(err)
 }
 
-module.exports = { runAi, handleErr };
+// Export for ES Modules
+export { runAi };
+
+// Export for CommonJS
+if (typeof module !== "undefined") {
+  module.exports = { runAi };
+}
