@@ -113,7 +113,7 @@ app.post('/activateAI/:bool', function(req, res) {
 client.on("message_create", function(msg) {
   if (msgData.activateAi && msg.fromMe == false) {
     runAi(msg.body).then(function(answer) {
-      client.sendMessage(mag.id.remote, answer).then(function() {
+      client.sendMessage(msg.id.remote, answer).then(function() {
         msgData.sendCount += 1;
       });
     })
@@ -134,7 +134,7 @@ app.get("/events", (req, res) => {
 
   function handleMessages(message) {
     msgData.messagesCount += 1;
-    hype('New message found.')
+    hype('New message found.');
 
     res.write(`data: ${JSON.stringify(message)} \n\n`);
   }
