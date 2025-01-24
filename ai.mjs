@@ -23,4 +23,4 @@ function handleErr(err) {
   console.log(err)
 }
 
-module.exports = { runAi, handleErr };
+export { runAi, handleErr };

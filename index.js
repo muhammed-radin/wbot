@@ -6,7 +6,7 @@ const pages = require("./pages");
 const localData = {};
 const cors = require("cors");
 const https = require('https');
-const { runAi } = require('./ai');
+const { runAi } = require('./ai.mjs');
 
 
 const client = new Client({
