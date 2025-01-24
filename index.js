@@ -1,12 +1,13 @@
-const express = require("express");
+import express from "express";
+import { Client, LocalAuth, AuthStrategy, Buttons } from "whatsapp-web.js";
+import qrcode from "qrcode-terminal";
+import pages from "./pages.js";
+import cors from "cors";
+import https from "https";
+import { runAi } from "./ai.js";
+
 const app = express();
-const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
-const pages = require("./pages");
 const localData = {};
-const cors = require("cors");
-const https = require('https');
-const { runAi } = require('./ai');
 
 
 const client = new Client({
