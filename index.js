@@ -4,7 +4,7 @@ const qrcode = require( "qrcode-terminal");
 const pages = require("./pages.js");
 const cors = require("cors");
 const https = require( "https");
-const { runAi } = require( "./ai.mjs");
+const { runAi } = import( "./ai.mjs");
 
 const app = express();
 const localData = {};
