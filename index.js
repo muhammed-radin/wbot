@@ -6,6 +6,7 @@ const pages = require("./pages");
 const localData = {};
 const cors = require("cors");
 const https = require('https');
+const { runAi } = require('ai.js');
 
 
 const client = new Client({
@@ -19,6 +20,7 @@ let msgData = {
   sendCount: 0,
   messagesCount: 0,
   isClientLogged: false,
+  activateAi: true,
 }
 
 function hype(write) {
@@ -98,6 +100,24 @@ app.get("/", function(req, res) {
 app.get('/status', function(req, res) {
   res.send(msgData)
 })
+
+app.post('/activateAI/:bool', function(req, res) {
+  var bool = req.params.bool;
+  msgData.activateAi = bool;
+  res.send(msgData)
+})
+
+
+client.on("message_create", function(msg) {
+  if (msgData.activateAi && msg.fromMe == false) {
+    runAi(msg.body).then(function(answer) {
+      client.sendMessage(mag.id.remote, answer).then(function() {
+        msgData.sendCount += 1;
+      });
+    })
+  }
+});
+
 
 // Start your client
 client.initialize();
