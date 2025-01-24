@@ -10,4 +10,4 @@ router.get("/:fileID", function(req, res) {
   res.sendFile(path.join(__dirname, "/localStore/" + req.params.fileID));
 });
 
-module.exports = router;
+export default router;
