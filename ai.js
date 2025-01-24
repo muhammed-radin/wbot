@@ -3,8 +3,6 @@ import { Client } from "@gradio/client";
 const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");;
 let history = [["Hello!", 'How can help you?'], ['Which year started Bushido?', 'Since 2016']]
 
-
-
 async function runAi(qes) {
   if (client) {
     const result = await client.predict("/model_chat", {
@@ -32,7 +30,7 @@ function handleErr(err) {
 // Export for ES Modules
 export { runAi };
 
-// Export for CommonJS
-if (typeof module !== "undefined") {
-  module.exports = { runAi };
-}
+// // Export for CommonJS
+// if (typeof module !== "undefined") {
+//   module.exports = { runAi };
+// }
