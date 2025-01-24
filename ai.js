@@ -1,4 +1,4 @@
-const { Client } = await import("@gradio/client");
+const { Client } = require("@gradio/client");
 
 const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");
 let history = [["Hello!", 'How can help you?'], ['Which year started Bushido?', 'Since 2016']]
@@ -23,4 +23,4 @@ function handleErr(err) {
   console.log(err)
 }
 
-export { runAi, handleErr };
+module.exports = { runAi, handleErr };
