@@ -4,17 +4,17 @@ const qrcode = require("qrcode-terminal");
 const pages = require("./pages.js");
 const cors = require("cors");
 const https = require("https");
-const { runAi } = import("./ai.mjs");
+const { log } = require("console");
+
+let runAi = function () {};
 
 const app = express();
 const localData = {};
 
-
-
 const client = new Client({
   puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  }
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  },
 });
 
 const writed = [];
@@ -23,43 +23,42 @@ let msgData = {
   messagesCount: 0,
   isClientLogged: false,
   activateAi: true,
-}
+};
 
 function hype(write) {
   if (writed.length > 200) {
-    writed.splice(0, 50)
+    writed.splice(0, 50);
   }
-  writed.push({ write, date: new Date().toString() })
+  writed.push({ write, date: new Date().toString() });
 }
 
-app.use(cors())
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/pages", pages);
 
-
 setInterval(() => {
-  https.get('https://wbot-bodg.onrender.com/');
+  https.get("https://wbot-bodg.onrender.com/");
 }, 30000);
 
 // When the client is ready, run this code (only once)
 client.once("ready", () => {
   msgData.isClientLogged = true;
   console.log("Client is ready!");
-  hype('Client is ready')
+  hype("Client is ready");
 
   app.post(
     "/send/:phoneID",
-    function(req, res, next) {
+    function (req, res, next) {
       const phone = req.params.phoneID;
-      hype('Mannual message sending to ' + phone);
+      hype("Mannual message sending to " + phone);
 
-      client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
+      client.sendMessage(phone + "@c.us", req.body.msg).then(function () {
         msgData.sendCount += 1;
         next();
       });
     },
-    function(req, res) {
+    function (req, res) {
       res.sendStatus(200);
       console.log("API LOGS");
     }
@@ -75,41 +74,63 @@ app.get("/qr", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   res.write(qr_code);
-  var timer = setInterval(function() {
+  var timer = setInterval(function () {
     res.write(`data: ${JSON.stringify({ qr: qr_code })} \n\n`);
   }, 2000);
 
-  req.on("close", function() {
+  req.on("close", function () {
     clearInterval(timer);
   });
 });
 
-app.get('/writed', function(req, res) {
+app.get("/writed", function (req, res) {
   res.json(writed);
-})
+});
 
 // When the client received QR-Code
 client.on("qr", (qr) => {
   qr_code = qr;
-  hype('QR Code ready')
+  hype("QR Code ready");
 });
 
-app.get("/", function(req, res) {
+app.get("/", function (req, res) {
   res.send(qr_code);
-  console.log('UPDATED')
 });
 
-app.get('/status', function(req, res) {
-  res.send(msgData)
-})
+app.get("/status", function (req, res) {
+  res.send(msgData);
+});
 
-app.post('/activateAI/:bool', function(req, res) {
+app.post("/activateAI/:bool", function (req, res) {
   var bool = req.params.bool;
   msgData.activateAi = bool;
-  res.send(msgData)
-})
+  res.send(msgData);
+});
 
+(async function () {
+  runAi = (await import("./ai.mjs")).runAi;
+  client.on("message_create", handleMessages);
+})();
 
+function handleMessages(message, res = null) {
+  msgData.messagesCount += 1;
+  hype("New message found.");
+  if (res) res.write(`data: ${JSON.stringify(message)} \n\n`);
+
+  if (!message.fromMe) {
+    hype("This message for me");
+    runAi(message.body).then(function (answer) {
+      hype("Remoted " + message.id.remote);
+      hype("AI Response: " + answer);
+      client.sendMessage(message.id.remote, answer).then(function () {
+        msgData.sendCount += 1;
+        hype("Message sended by AI");
+      });
+    });
+  }
+
+  hype("Signal Good");
+}
 
 // Start your client
 client.initialize();
@@ -121,34 +142,17 @@ app.get("/events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   res.write("");
-
-  function handleMessages(message) {
-    msgData.messagesCount += 1;
-    hype('New message found.');
-
-
-    if (!message.fromMe) {
-      hype('This message for me')
-      runAi(message.body).then(function(answer) {
-        hype('Remoted '+message.id.remote);
-        hype('AI Response: '+answer)
-        client.sendMessage(message.id.remote, answer).then(function() {
-          msgData.sendCount += 1;
-          hype('Message sended by AI')
-        });
-      })
-    }
-    
-    hype('Signal Good')
-
-    res.write(`data: ${JSON.stringify(message)} \n\n`);
+  function handleMSG(msg) {
+    handleMessages(msg, res);
   }
 
-  client.on("message_create", handleMessages);
-
-  req.on("close", function() {
-    client.off("message_create", handleMessages);
+  req.on("close", function () {
+    client.off("message_create", handleMSG);
   });
+  client.on("message_create", handleMSG);
 });
 
-app.listen((process.env.PORT || 3000));
+app.listen(process.env.PORT || 3000);
+
+
+// html pages host link
