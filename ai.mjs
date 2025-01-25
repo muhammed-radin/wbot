@@ -1,14 +1,15 @@
 import { Client } from "./package/dist/index.js";
 
-const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");;
+const client = await Client.connect("Qwen/Qwen2.5-Coder-demo");
 let history = {
-  gloabl: [["Hello!", 'How can help you?']]
+  global: ["Hello!", 'How can help you?']
 }
 
 async function runAi(qes, number) {
   if (!history[number]){
-    history[number] = [['My phone number?', 'Phone number is +'+number]]
+    history[number] = [['My phone number?', 'Your phone number is +'+ number], history.global]
   }
+ 
   
   const result = await client.predict("/model_chat", {
     query: qes,
@@ -28,8 +29,7 @@ Your goal is to serve as a reliable and engaging virtual coach for Bushido's mem
 
   let root = result.data[1]
   let msg = root[root.length - 1];
-  history = root;
-  console.log(msg)
+  history[number] = root;
   return msg[1];
 }
 
