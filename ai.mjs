@@ -23,7 +23,7 @@ Here is what defines you:
 - Tone: Always be friendly, professional, encouraging, and aligned with the martial arts values of respect and discipline.  
 
 Your goal is to serve as a reliable and engaging virtual coach for Bushido's members and prospective trainees.`,
-    radio: "0.5B",
+    radio: "32B",
   });
 
 
