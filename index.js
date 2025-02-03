@@ -117,7 +117,7 @@ function handleMessages(message, res = null) {
   hype("New message found.");
   if (res) res.write(`data: ${JSON.stringify(message)} \n\n`);
 
-  if (!message.fromMe) {
+  if (message.body.includes('/ai')) {
     hype("This message for me");
     runAi(message.body).then(function (answer) {
       hype("Remoted " + message.id.remote);
