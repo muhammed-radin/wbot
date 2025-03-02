@@ -6,13 +6,17 @@ const cors = require("cors");
 const https = require("https");
 const { log } = require("console");
 
-let runAi = function () {};
+let runAi = function() {};
 
 const app = express();
 const localData = {};
 
 const client = new Client({
+  authStrategy: new LocalAuth({
+    dataPath: './sessions', // Store session data in this folder
+  }),
   puppeteer: {
+    headless: true, // Keep headless mode on for background execution
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
 });
@@ -49,21 +53,38 @@ client.once("ready", () => {
 
   app.post(
     "/send/:phoneID",
-    function (req, res, next) {
+    function(req, res, next) {
       const phone = req.params.phoneID;
       hype("Mannual message sending to " + phone);
 
-      client.sendMessage(phone + "@c.us", req.body.msg).then(function () {
+      client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
         msgData.sendCount += 1;
         next();
       });
     },
-    function (req, res) {
+    function(req, res) {
       res.sendStatus(200);
       console.log("API LOGS");
     }
   );
 });
+
+client.on('authenticated', () => {
+  console.log('Authenticated successfully!');
+});
+
+client.on('disconnected', (reason) => {
+  console.error('Client disconnected:', reason);
+  console.log('Reconnecting...');
+  client.initialize(); // Restart the client
+});
+
+
+client.on('auth_failure', (msg) => {
+  console.error('Authentication failure:', msg);
+  console.log('Delete the ./sessions folder if the issue persists.');
+});
+
 
 var qr_code = "";
 
@@ -74,16 +95,16 @@ app.get("/qr", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   res.write(qr_code);
-  var timer = setInterval(function () {
+  var timer = setInterval(function() {
     res.write(`data: ${JSON.stringify({ qr: qr_code })} \n\n`);
   }, 2000);
 
-  req.on("close", function () {
+  req.on("close", function() {
     clearInterval(timer);
   });
 });
 
-app.get("/writed", function (req, res) {
+app.get("/writed", function(req, res) {
   res.json(writed);
 });
 
@@ -93,21 +114,21 @@ client.on("qr", (qr) => {
   hype("QR Code ready");
 });
 
-app.get("/", function (req, res) {
+app.get("/", function(req, res) {
   res.send(qr_code);
 });
 
-app.get("/status", function (req, res) {
+app.get("/status", function(req, res) {
   res.send(msgData);
 });
 
-app.post("/activateAI/:bool", function (req, res) {
+app.post("/activateAI/:bool", function(req, res) {
   var bool = req.params.bool;
   msgData.activateAi = bool;
   res.send(msgData);
 });
 
-(async function () {
+(async function() {
   runAi = (await import("./ai.mjs")).runAi;
   client.on("message_create", handleMessages);
 })();
@@ -119,10 +140,10 @@ function handleMessages(message, res = null) {
 
   if (message.body.includes('/ai')) {
     hype("This message for me");
-    runAi(message.body).then(function (answer) {
+    runAi(message.body).then(function(answer) {
       hype("Remoted " + message.id.remote);
       hype("AI Response: " + answer);
-      client.sendMessage(message.id.remote, answer).then(function () {
+      client.sendMessage(message.id.remote, answer).then(function() {
         msgData.sendCount += 1;
         hype("Message sended by AI");
       });
@@ -142,11 +163,12 @@ app.get("/events", (req, res) => {
   res.setHeader("Connection", "keep-alive");
 
   res.write("");
+
   function handleMSG(msg) {
     handleMessages(msg, res);
   }
 
-  req.on("close", function () {
+  req.on("close", function() {
     client.off("message_create", handleMSG);
   });
   client.on("message_create", handleMSG);
