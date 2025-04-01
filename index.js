@@ -64,25 +64,25 @@ client.once("ready", () => {
     },
     function(req, res) {
       res.sendStatus(200);
-      console.log("API LOGS");
+      hype('Send success');
     }
   );
 });
 
 client.on('authenticated', () => {
-  console.log('Authenticated successfully!');
+  hype('Authenticated successfully!');
 });
 
 client.on('disconnected', (reason) => {
-  console.error('Client disconnected:', reason);
-  console.log('Reconnecting...');
+  hype('Client disconnected:', reason);
+  hype('Reconnecting...');
   client.initialize(); // Restart the client
 });
 
 
 client.on('auth_failure', (msg) => {
-  console.error('Authentication failure:', msg);
-  console.log('Delete the ./sessions folder if the issue persists.');
+  hype('Authentication failure:', msg);
+  hype('Delete the ./sessions folder if the issue persists.');
 });
 
 
