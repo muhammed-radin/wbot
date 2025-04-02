@@ -138,16 +138,45 @@ function handleMessages(message, res = null) {
   hype("New message found.");
   if (res) res.write(`data: ${JSON.stringify(message)} \n\n`);
 
-  if (message.body.includes('/ai')) {
-    hype("This message for me");
-    runAi(message.body).then(function(answer) {
-      hype("Remoted " + message.id.remote);
-      hype("AI Response: " + answer);
-      client.sendMessage(message.id.remote, answer).then(function() {
-        msgData.sendCount += 1;
-        hype("Message sended by AI");
-      });
+  function sendRes(answer, type = 'text') {
+    hype("Remoted " + message.id.remote);
+    hype("AI Response: " + answer);
+    client.sendMessage(message.id.remote, answer, type).then(function() {
+      msgData.sendCount += 1;
+      hype("Message sended by AI".fontcolor('yellow'));
     });
+  }
+
+  if (message.body.startsWith('/ai')) {
+    message.body = message.body.replace('/ai', '')
+    runAi(message.body).then(sendRes).catch(hype);
+  } else if (message.body.startsWith('/gpt')) {
+
+    message.body = message.body.replace('/gpt', '')
+
+    let pr = encodeURIComponent(message.body);
+    fetch('https://text.pollinations.ai/' + pr +
+      "?system=You're helpful bot you doesn't provide explanation if i asked you can provide").then(function(res) {
+      res.text().then(function(t) {
+        sendRes(t)
+      })
+    })
+
+
+  } else if (message.body.startsWith('/speak')) {
+
+    message.body = message.body.replace('/speak', '')
+    let pr = encodeURIComponent(message.body);
+    let mediaUrl = "https://text.pollinations.ai/"+pr+"?model=openai-audio&voice=verse"
+    sendRes(mediaUrl, 'audio');
+    
+  } else if (message.body.startsWith('/pic')) {
+
+    message.body = message.body.replace('/pic', '')
+
+    let pr = encodeURIComponent(message.body);
+    let mediaUrl = "https://image.pollinations.ai/prompt/"+pr+"?width=1024&height=1024&seed=280&nologo=true"
+    sendRes(mediaUrl, 'image')
   }
 
   hype("Signal Good");
