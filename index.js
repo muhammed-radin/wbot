@@ -149,7 +149,7 @@ function handleMessages(message, res = null) {
 
   if (message.body.startsWith('/ai')) {
     message.body = message.body.replace('/ai', '')
-    runAi(message.body).then(sendRes).catch(hype);
+    //runAi(message.body).then(sendRes).catch(hype);
   } else if (message.body.startsWith('/gpt')) {
 
     message.body = message.body.replace('/gpt', '')
