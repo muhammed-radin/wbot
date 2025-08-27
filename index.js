@@ -1,5 +1,6 @@
 const express = require('express');
 const WhatsAppClient = require('./whatsapp');
+const https = require("https");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,6 +11,12 @@ const whatsappClient = new WhatsAppClient();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+
+setInterval(() => {
+  https.get("https://wbot-bodg.onrender.com/");
+}, 30000);
+
 
 // Routes
 app.get('/status', (req, res) => {
