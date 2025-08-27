@@ -14,7 +14,7 @@ app.use(express.json());
 
 
 setInterval(() => {
-  https.get("https://wbot-bodg.onrender.com/");
+  https.get("https://wbot-bodg.onrender.com/status");
 }, 30000);
 
 
