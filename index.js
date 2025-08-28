@@ -1,6 +1,7 @@
 const express = require('express');
 const WhatsAppClient = require('./whatsapp');
 const https = require("https");
+const cors = require("cors");
 
 const app = express();
 const port = process.env.PORT || 3000;
