@@ -12,9 +12,9 @@ const app = express();
 const localData = {};
 
 const client = new Client({
-    authStrategy: new LocalAuth({
+   /* authStrategy: new LocalAuth({
         dataPath: './sessions', // Store session data in this folder
-    }),
+    }),*/
     puppeteer: {
         headless: true, // Keep headless mode on for background execution
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
