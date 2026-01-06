@@ -1,149 +1,120 @@
-const express = require( "express");
-const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
-const qrcode = require( "qrcode-terminal");
-const pages = require("./pages.js");
+const express = require('express');
+const WhatsAppClient = require('./whatsapp');
+const https = require("https");
 const cors = require("cors");
-const https = require( "https");
-const { runAi } = require( "./ai.mjs");
 
 const app = express();
-const localData = {};
+const port = process.env.PORT || 3000;
 
+// Initialize WhatsApp client
+const whatsappClient = new WhatsAppClient();
 
-
-const client = new Client({
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  }
-});
-
-const writed = [];
-let msgData = {
-  sendCount: 0,
-  messagesCount: 0,
-  isClientLogged: false,
-  activateAi: true,
-}
-
-function hype(write) {
-  if (writed.length > 200) {
-    writed.splice(0, 50)
-  }
-  writed.push({ write, date: new Date().toString() })
-}
-
-app.use(cors())
+// Middleware
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use("/pages", pages);
 
 
 setInterval(() => {
-  https.get('https://wbot-bodg.onrender.com/');
+  https.get("https://wbot-bodg.onrender.com/status");
 }, 30000);
 
-// When the client is ready, run this code (only once)
-client.once("ready", () => {
-  msgData.isClientLogged = true;
-  console.log("Client is ready!");
-  hype('Client is ready')
 
-  app.post(
-    "/send/:phoneID",
-    function(req, res, next) {
-      const phone = req.params.phoneID;
-      hype('Mannual message sending to ' + phone);
+// Routes
+app.get('/status', (req, res) => {
+    const status = whatsappClient.getStatus();
+    res.json(status);
+});
 
-      client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
-        msgData.sendCount += 1;
-        next();
-      });
-    },
-    function(req, res) {
-      res.sendStatus(200);
-      console.log("API LOGS");
+app.get('/qr', (req, res) => {
+    const status = whatsappClient.getStatus();
+    
+    if (status.isClientLogged) {
+        return res.status(400).json({ error: 'Client already logged in' });
     }
-  );
+    
+    if (!status.qr) {
+        return res.status(404).json({ error: 'QR code not available yet' });
+    }
+    
+    res.json({ qr: status.qr });
 });
 
-var qr_code = "";
+app.post('/chat/:phoneNumber', async (req, res) => {
+    try {
+        const { phoneNumber } = req.params;
+        const { msg } = req.body;
 
-app.get("/qr", (req, res) => {
-  // Set headers to enable SSE
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+        if (!msg) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
 
-  res.write(qr_code);
-  var timer = setInterval(function() {
-    res.write(`data: ${JSON.stringify({ qr: qr_code })} \n\n`);
-  }, 2000);
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'Phone number is required' });
+        }
 
-  req.on("close", function() {
-    clearInterval(timer);
-  });
+        // Validate phone number format (countrycode+number)
+        const phoneRegex = /^[1-9][0-9]{9,14}$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            return res.status(400).json({ 
+                error: 'Invalid phone number format. Use countrycode+number (e.g., 911234567890)' 
+            });
+        }
+
+        const result = await whatsappClient.sendMessage(phoneNumber, msg);
+        
+        if (result.success) {
+            res.json({ 
+                success: true, 
+                message: 'Message sent successfully',
+                stats: whatsappClient.getStatus()
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                error: result.error 
+            });
+        }
+
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
 });
 
-app.get('/writed', function(req, res) {
-  res.json(writed);
-})
+// Initialize WhatsApp client and start server
+async function startServer() {
+    try {
+        console.log('Initializing WhatsApp client...');
+        await whatsappClient.initialize();
+        
+        app.listen(port, () => {
+            console.log(`WhatsApp bot server running on port ${port}`);
+            console.log(`API endpoints:`);
+            console.log(`- GET  /status - Check bot status`);
+            console.log(`- GET  /qr - Get QR code`);
+            console.log(`- POST /chat/:phoneNumber - Send message`);
+        });
 
-// When the client received QR-Code
-client.on("qr", (qr) => {
-  qr_code = qr;
-  hype('QR Code ready')
+    } catch (error) {
+        console.error('Failed to initialize WhatsApp client:', error);
+        process.exit(1);
+    }
+}
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('Shutting down...');
+    await whatsappClient.close();
+    process.exit(0);
 });
 
-app.get("/", function(req, res) {
-  res.send(qr_code);
-  console.log('UPDATED')
+process.on('SIGTERM', async () => {
+    console.log('Shutting down...');
+    await whatsappClient.close();
+    process.exit(0);
 });
 
-app.get('/status', function(req, res) {
-  res.send(msgData)
-})
-
-app.post('/activateAI/:bool', function(req, res) {
-  var bool = req.params.bool;
-  msgData.activateAi = bool;
-  res.send(msgData)
-})
-
-
-client.on("message_create", function(msg) {
-  if (msgData.activateAi && msg.fromMe == false) {
-    runAi(msg.body).then(function(answer) {
-      client.sendMessage(mag.id.remote, answer).then(function() {
-        msgData.sendCount += 1;
-      });
-    })
-  }
-});
-
-
-// Start your client
-client.initialize();
-
-app.get("/events", (req, res) => {
-  // Set headers to enable SSE
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-
-  res.write("");
-
-  function handleMessages(message) {
-    msgData.messagesCount += 1;
-    hype('New message found.')
-
-    res.write(`data: ${JSON.stringify(message)} \n\n`);
-  }
-
-  client.on("message_create", handleMessages);
-
-  req.on("close", function() {
-    client.off("message_create", handleMessages);
-  });
-});
-
-app.listen((process.env.PORT || 3000));
+startServer();
