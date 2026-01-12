@@ -44,7 +44,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: "/opt/render/.cache/puppeteer",
+        executablePath: "/opt/render/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome",
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
