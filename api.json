@@ -1,9 +1,48 @@
 {
     "endpoints": [
-        "/",
-        "/qr",
-        "/events",
-        "/send/:phoneID"
+        {
+            "method": "GET",
+            "path": "/",
+            "description": "Get QR code as text"
+        },
+        {
+            "method": "GET",
+            "path": "/qr",
+            "description": "Get QR code via Server-Sent Events"
+        },
+        {
+            "method": "GET",
+            "path": "/status",
+            "description": "Get bot status"
+        },
+        {
+            "method": "GET",
+            "path": "/writed",
+            "description": "Get log history"
+        },
+        {
+            "method": "POST",
+            "path": "/activateAI/:bool",
+            "description": "Toggle AI activation (true/false)"
+        },
+        {
+            "method": "POST",
+            "path": "/send/:phoneID",
+            "description": "Send message to phone number",
+            "body": {
+                "msg": "string"
+            }
+        },
+        {
+            "method": "GET",
+            "path": "/events",
+            "description": "Message events via Server-Sent Events"
+        },
+        {
+            "method": "GET",
+            "path": "/pages/:fileID",
+            "description": "Serve static pages"
+        }
     ],
     "pages": [
         "pages/index.html",
