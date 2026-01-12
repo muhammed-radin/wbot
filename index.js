@@ -7,6 +7,12 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configuration constants
+const MAX_LOGS = 200;
+const LOG_TRIM_COUNT = 50;
+const RECONNECT_DELAY_MS = process.env.RECONNECT_DELAY_MS || 5000;
+const CHROMIUM_PATH = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -24,8 +30,8 @@ let msgData = {
 
 // Logging function
 function log(message) {
-    if (logs.length > 200) {
-        logs.splice(0, 50);
+    if (logs.length > MAX_LOGS) {
+        logs.splice(0, LOG_TRIM_COUNT);
     }
     logs.push({ write: message, date: new Date().toString() });
     console.log(message);
@@ -38,7 +44,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: "/usr/bin/chromium",
+        executablePath: CHROMIUM_PATH,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -79,7 +85,7 @@ client.on("disconnected", (reason) => {
     log("Attempting to reconnect...");
     setTimeout(() => {
         client.initialize();
-    }, 5000);
+    }, RECONNECT_DELAY_MS);
 });
 
 // Message handling
@@ -98,6 +104,9 @@ client.on("message_create", async (message) => {
             const response = await fetch(
                 `https://text.pollinations.ai/${encodedPrompt}?system=You're a helpful bot`
             );
+            if (!response.ok) {
+                throw new Error(`API returned status ${response.status}`);
+            }
             const text = await response.text();
             await client.sendMessage(message.from, text);
             msgData.sendCount += 1;
@@ -111,7 +120,13 @@ client.on("message_create", async (message) => {
             log("Image URL sent");
         }
     } catch (error) {
-        log("Error processing message: " + error.message);
+        const errorMessage = error.message || "Unknown error occurred";
+        log("Error processing message: " + errorMessage);
+        try {
+            await client.sendMessage(message.from, "Sorry, an error occurred while processing your request.");
+        } catch (sendError) {
+            log("Failed to send error message: " + sendError.message);
+        }
     }
 });
 
