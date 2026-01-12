@@ -44,7 +44,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: CHROMIUM_PATH,
+        //executablePath: CHROMIUM_PATH,
         args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
