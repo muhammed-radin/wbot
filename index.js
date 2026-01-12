@@ -3,6 +3,7 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,7 +12,47 @@ const PORT = process.env.PORT || 3000;
 const MAX_LOGS = 200;
 const LOG_TRIM_COUNT = 50;
 const RECONNECT_DELAY_MS = process.env.RECONNECT_DELAY_MS || 5000;
-const CHROMIUM_PATH = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
+
+// Common browser executable paths to check
+const BROWSER_PATHS = [
+    // Linux
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/opt/google/chrome/chrome",
+    "/snap/bin/chromium",
+    // macOS
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/usr/local/bin/chromium",
+    // Windows
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+];
+
+// Find an available browser executable path
+function findBrowserPath() {
+    // If CHROMIUM_PATH is set, validate it exists
+    if (process.env.CHROMIUM_PATH) {
+        if (fs.existsSync(process.env.CHROMIUM_PATH)) {
+            return process.env.CHROMIUM_PATH;
+        }
+        console.warn(`Warning: CHROMIUM_PATH (${process.env.CHROMIUM_PATH}) does not exist, falling back to auto-detection.`);
+    }
+
+    // Check common paths for an existing browser
+    for (const browserPath of BROWSER_PATHS) {
+        if (fs.existsSync(browserPath)) {
+            return browserPath;
+        }
+    }
+
+    // Return null if no browser found
+    return null;
+}
+
+const CHROMIUM_PATH = findBrowserPath();
 
 // Middleware
 app.use(cors());
@@ -37,25 +78,32 @@ function log(message) {
     console.log(message);
 }
 
+// Build puppeteer options
+const puppeteerOptions = {
+    headless: true,
+    args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process",
+        "--disable-gpu",
+    ],
+};
+
+// Only set executablePath if a browser was found
+if (CHROMIUM_PATH) {
+    puppeteerOptions.executablePath = CHROMIUM_PATH;
+}
+
 // WhatsApp Client initialization
 const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: "./sessions",
     }),
-    puppeteer: {
-        headless: true,
-        executablePath: CHROMIUM_PATH,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-        ],
-    },
+    puppeteer: puppeteerOptions,
 });
 
 // Event listeners for WhatsApp client
@@ -220,8 +268,17 @@ app.get("/pages/:fileID", (req, res) => {
 });
 
 // Initialize WhatsApp client
+if (CHROMIUM_PATH) {
+    log(`Using browser at: ${CHROMIUM_PATH}`);
+} else {
+    log("No browser executable found. Puppeteer will attempt to use its bundled browser or you can set CHROMIUM_PATH environment variable.");
+}
+
 client.initialize().catch((err) => {
     log("Failed to initialize WhatsApp client: " + err.message);
+    if (err.message.includes("executablePath") || err.message.includes("Browser")) {
+        log("Hint: Install Chromium/Chrome or set CHROMIUM_PATH environment variable to your browser executable.");
+    }
 });
 
 // Start server
