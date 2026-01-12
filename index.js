@@ -1,27 +1,26 @@
 const express = require("express");
-const { Client, LocalAuth, AuthStrategy, Buttons } = require("whatsapp-web.js");
+const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
-const pages = require("./pages.js");
 const cors = require("cors");
-const https = require("https");
-const { log } = require("console");
-
-let runAi = function() {};
+const path = require("path");
 
 const app = express();
-const localData = {};
+const PORT = process.env.PORT || 3000;
 
-const client = new Client({
-   /* authStrategy: new LocalAuth({
-        dataPath: './sessions', // Store session data in this folder
-    }),*/
-    puppeteer: {
-        headless: true, // Keep headless mode on for background execution
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    },
-});
+// Configuration constants
+const MAX_LOGS = 200;
+const LOG_TRIM_COUNT = 50;
+const RECONNECT_DELAY_MS = process.env.RECONNECT_DELAY_MS || 5000;
+const CHROMIUM_PATH = process.env.CHROMIUM_PATH || "/usr/bin/chromium";
 
-const writed = [];
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// State management
+const logs = [];
+let qrCode = "";
 let msgData = {
     sendCount: 0,
     messagesCount: 0,
@@ -29,181 +28,203 @@ let msgData = {
     activateAi: true,
 };
 
-function hype(write) {
-    if (writed.length > 200) {
-        writed.splice(0, 50);
+// Logging function
+function log(message) {
+    if (logs.length > MAX_LOGS) {
+        logs.splice(0, LOG_TRIM_COUNT);
     }
-    writed.push({ write, date: new Date().toString() });
+    logs.push({ write: message, date: new Date().toString() });
+    console.log(message);
 }
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use("/pages", pages);
-
-setInterval(() => {
-    https.get("https://wbot-bodg.onrender.com/");
-}, 30000);
-
-// When the client is ready, run this code (only once)
-client.once("ready", () => {
-    msgData.isClientLogged = true;
-    console.log("Client is ready!");
-    hype("Client is ready");
-    
-    app.post(
-        "/send/:phoneID",
-        function(req, res, next) {
-            const phone = req.params.phoneID;
-            hype("Mannual message sending to " + phone);
-            
-            client.sendMessage(phone + "@c.us", req.body.msg).then(function() {
-                msgData.sendCount += 1;
-                next();
-            });
-        },
-        function(req, res) {
-            res.sendStatus(200);
-            hype('Send success');
-        }
-    );
+// WhatsApp Client initialization
+const client = new Client({
+    authStrategy: new LocalAuth({
+        dataPath: "./sessions",
+    }),
+    puppeteer: {
+        headless: true,
+        executablePath: CHROMIUM_PATH,
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--no-first-run",
+            "--no-zygote",
+            "--single-process",
+            "--disable-gpu",
+        ],
+    },
 });
 
-client.on('authenticated', () => {
-    hype('Authenticated successfully!');
-});
-
-client.on('disconnected', (reason) => {
-    hype('Client disconnected:', reason);
-    hype('Reconnecting...');
-    client.initialize(); // Restart the client
-});
-
-
-client.on('auth_failure', (msg) => {
-    hype('Authentication failure:', msg);
-    hype('Delete the ./sessions folder if the issue persists.');
-});
-
-
-var qr_code = "";
-
-app.get("/qr", (req, res) => {
-    // Set headers to enable SSE
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    
-    res.write(qr_code);
-    var timer = setInterval(function() {
-        res.write(`data: ${JSON.stringify({ qr: qr_code })} \n\n`);
-    }, 2000);
-    
-    req.on("close", function() {
-        clearInterval(timer);
-    });
-});
-
-app.get("/writed", function(req, res) {
-    res.json(writed);
-});
-
-// When the client received QR-Code
+// Event listeners for WhatsApp client
 client.on("qr", (qr) => {
-    qr_code = qr;
-    hype("QR Code ready");
+    qrCode = qr;
+    log("QR Code ready - scan to authenticate");
+    qrcode.generate(qr, { small: true });
 });
 
-app.get("/", function(req, res) {
-    res.send(qr_code);
+client.on("ready", () => {
+    msgData.isClientLogged = true;
+    qrCode = "";
+    log("WhatsApp client is ready!");
 });
 
-app.get("/status", function(req, res) {
-    res.send(msgData);
+client.on("authenticated", () => {
+    log("Authenticated successfully!");
 });
 
-app.post("/activateAI/:bool", function(req, res) {
-    var bool = req.params.bool;
-    msgData.activateAi = bool;
-    res.send(msgData);
+client.on("auth_failure", (msg) => {
+    log("Authentication failure: " + msg);
 });
 
-(async function() {
-    runAi = (await import("./ai.mjs")).runAi;
-    client.on("message_create", handleMessages);
-})();
+client.on("disconnected", (reason) => {
+    msgData.isClientLogged = false;
+    log("Client disconnected: " + reason);
+    log("Attempting to reconnect...");
+    setTimeout(() => {
+        client.initialize();
+    }, RECONNECT_DELAY_MS);
+});
 
-function handleMessages(message, res = null) {
+// Message handling
+client.on("message_create", async (message) => {
     msgData.messagesCount += 1;
-    hype("New message found.");
-    if (res) res.write(`data: ${JSON.stringify(message)} \n\n`);
-    
-    function sendRes(answer, type = 'text') {
-        hype("Remoted " + message.id.remote);
-        hype("AI Response: " + answer);
-        client.sendMessage(message.id.remote, answer, type).then(function() {
+    log("New message received");
+
+    if (!msgData.activateAi) return;
+
+    const body = message.body;
+
+    try {
+        if (body.startsWith("/gpt ")) {
+            const prompt = body.replace("/gpt ", "");
+            const encodedPrompt = encodeURIComponent(prompt);
+            const response = await fetch(
+                `https://text.pollinations.ai/${encodedPrompt}?system=You're a helpful bot`
+            );
+            if (!response.ok) {
+                throw new Error(`API returned status ${response.status}`);
+            }
+            const text = await response.text();
+            await client.sendMessage(message.from, text);
             msgData.sendCount += 1;
-            hype("Message sended by AI".fontcolor('yellow'));
-        });
+            log("GPT response sent");
+        } else if (body.startsWith("/pic ")) {
+            const prompt = body.replace("/pic ", "");
+            const encodedPrompt = encodeURIComponent(prompt);
+            const mediaUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
+            await client.sendMessage(message.from, mediaUrl);
+            msgData.sendCount += 1;
+            log("Image URL sent");
+        }
+    } catch (error) {
+        const errorMessage = error.message || "Unknown error occurred";
+        log("Error processing message: " + errorMessage);
+        try {
+            await client.sendMessage(message.from, "Sorry, an error occurred while processing your request.");
+        } catch (sendError) {
+            log("Failed to send error message: " + sendError.message);
+        }
     }
-    
-    if (message.body.startsWith('/ai')) {
-        message.body = message.body.replace('/ai', '')
-        runAi(message.body).then(sendRes).catch(hype);
-    } else if (message.body.startsWith('/gpt')) {
-        
-        message.body = message.body.replace('/gpt', '')
-        
-        let pr = encodeURIComponent(message.body);
-        fetch('https://text.pollinations.ai/' + pr +
-            "?system=You're helpful bot you doesn't provide explanation if i asked you can provide").then(function(res) {
-            res.text().then(function(t) {
-                sendRes(t)
-            })
-        })
-        
-        
-    } else if (message.body.startsWith('/speak')) {
-        
-        message.body = message.body.replace('/speak', '')
-        let pr = encodeURIComponent(message.body);
-        let mediaUrl = "https://text.pollinations.ai/" + pr + "?model=openai-audio&voice=verse"
-        sendRes(mediaUrl, 'audio');
-        
-    } else if (message.body.startsWith('/pic')) {
-        
-        message.body = message.body.replace('/pic', '')
-        
-        let pr = encodeURIComponent(message.body);
-        let mediaUrl = "https://image.pollinations.ai/prompt/" + pr + "?width=1024&height=1024&seed=280&nologo=true"
-        sendRes(mediaUrl, 'image')
-    }
-    
-    hype("Signal Good");
-}
+});
 
-// Start your client
-client.initialize();
+// REST API Routes
 
-app.get("/events", (req, res) => {
-    // Set headers to enable SSE
+// Get QR code as text
+app.get("/", (req, res) => {
+    res.send(qrCode);
+});
+
+// Get QR code via Server-Sent Events
+app.get("/qr", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    
-    res.write("");
-    
-    function handleMSG(msg) {
-        handleMessages(msg, res);
-    }
-    
-    req.on("close", function() {
-        client.off("message_create", handleMSG);
+
+    res.write(`data: ${JSON.stringify({ qr: qrCode })}\n\n`);
+
+    const interval = setInterval(() => {
+        res.write(`data: ${JSON.stringify({ qr: qrCode })}\n\n`);
+    }, 2000);
+
+    req.on("close", () => {
+        clearInterval(interval);
     });
-    client.on("message_create", handleMSG);
 });
 
-app.listen(process.env.PORT || 3000);
+// Get bot status
+app.get("/status", (req, res) => {
+    res.json(msgData);
+});
 
+// Get logs
+app.get("/writed", (req, res) => {
+    res.json(logs);
+});
 
-// html pages host link
+// Toggle AI activation
+app.post("/activateAI/:bool", (req, res) => {
+    const bool = req.params.bool === "true";
+    msgData.activateAi = bool;
+    res.json(msgData);
+});
+
+// Send message to phone number
+app.post("/send/:phoneID", async (req, res) => {
+    const phone = req.params.phoneID;
+    const message = req.body.msg;
+
+    if (!msgData.isClientLogged) {
+        return res.status(503).json({ error: "WhatsApp client not connected" });
+    }
+
+    try {
+        log("Sending message to " + phone);
+        await client.sendMessage(phone + "@c.us", message);
+        msgData.sendCount += 1;
+        log("Message sent successfully");
+        res.sendStatus(200);
+    } catch (error) {
+        log("Error sending message: " + error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Message events via Server-Sent Events
+app.get("/events", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const messageHandler = (message) => {
+        res.write(`data: ${JSON.stringify(message)}\n\n`);
+    };
+
+    client.on("message_create", messageHandler);
+
+    req.on("close", () => {
+        client.off("message_create", messageHandler);
+    });
+});
+
+// Serve static pages
+app.get("/pages/:fileID", (req, res) => {
+    const filePath = path.join(__dirname, "localStore", req.params.fileID);
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            res.status(404).send("File not found");
+        }
+    });
+});
+
+// Initialize WhatsApp client
+client.initialize().catch((err) => {
+    log("Failed to initialize WhatsApp client: " + err.message);
+});
+
+// Start server
+app.listen(PORT, () => {
+    log(`Server running on port ${PORT}`);
+});
