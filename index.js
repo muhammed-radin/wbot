@@ -113,7 +113,7 @@ const client = new Client({
 client.on("qr", (qr) => {
     qrCode = qr;
     log("QR Code ready - scan to authenticate");
-    qrcode.generate(qr, { small: true });
+    //qrcode.generate(qr, { small: true });
 });
 
 client.on("ready", () => {
@@ -311,7 +311,7 @@ app.listen(PORT, () => {
     const serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     setInterval(() => {
         selfPing(`${serverUrl}/status`)
-            .then(() => log("Self-ping successful"))
+            .then(() => {})
             .catch((err) => log("Self-ping failed: " + err.message));
     }, SELF_PING_INTERVAL_MS);
     log(`Self-ping enabled every ${SELF_PING_INTERVAL_MS / 1000} seconds`);
