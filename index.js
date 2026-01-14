@@ -55,7 +55,7 @@ function findBrowserPath() {
     return null;
 }
 
-const CHROMIUM_PATH3 = findBrowserPath();
+const CHROMIUM_PATH = findBrowserPath();
 
 // Middleware
 app.use(cors());
