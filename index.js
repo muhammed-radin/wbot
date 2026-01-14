@@ -103,20 +103,7 @@ const client = new Client({
     authStrategy: new LocalAuth({
         dataPath: "./sessions",
     }),
-    puppeteer: {
-        headless: true,
-        executablePath: "/opt/render/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome",
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--no-first-run",
-            "--no-zygote",
-            "--single-process",
-            "--disable-gpu",
-        ],
-    },
+    puppeteer: puppeteerOptions,
 });
 
 // Event listeners for WhatsApp client
@@ -294,7 +281,19 @@ client.initialize().catch((err) => {
     }
 });
 
+// Self-ping interval (in milliseconds) - for Render hosting to prevent server sleeping
+const SELF_PING_INTERVAL_MS = 10000;
+
 // Start server
 app.listen(PORT, () => {
     log(`Server running on port ${PORT}`);
+
+    // Self-ping to keep server alive on Render
+    const serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    setInterval(() => {
+        fetch(`${serverUrl}/status`)
+            .then(() => log("Self-ping successful"))
+            .catch((err) => log("Self-ping failed: " + err.message));
+    }, SELF_PING_INTERVAL_MS);
+    log(`Self-ping enabled every ${SELF_PING_INTERVAL_MS / 1000} seconds`);
 });
