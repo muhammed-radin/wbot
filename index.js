@@ -5,6 +5,9 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 
+const http = require("http");
+const https = require("https");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -284,6 +287,22 @@ client.initialize().catch((err) => {
 // Self-ping interval (in milliseconds) - for Render hosting to prevent server sleeping
 const SELF_PING_INTERVAL_MS = 10000;
 
+// Helper function for self-ping using http/https
+function selfPing(url) {
+    const client = url.startsWith("https") ? https : http;
+    return new Promise((resolve, reject) => {
+        const req = client.get(url, (res) => {
+            res.resume(); // Consume response data to free up memory
+            resolve(res.statusCode);
+        });
+        req.on("error", reject);
+        req.setTimeout(5000, () => {
+            req.destroy();
+            reject(new Error("Request timeout"));
+        });
+    });
+}
+
 // Start server
 app.listen(PORT, () => {
     log(`Server running on port ${PORT}`);
@@ -291,7 +310,7 @@ app.listen(PORT, () => {
     // Self-ping to keep server alive on Render
     const serverUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
     setInterval(() => {
-        fetch(`${serverUrl}/status`)
+        selfPing(`${serverUrl}/status`)
             .then(() => log("Self-ping successful"))
             .catch((err) => log("Self-ping failed: " + err.message));
     }, SELF_PING_INTERVAL_MS);

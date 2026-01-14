@@ -106,15 +106,18 @@ npm start
 
 ### Installing Puppeteer on Render
 
-Puppeteer requires some additional dependencies on Render. Add a `render-build.sh` script:
+Render's native Node.js environment includes most dependencies needed for Puppeteer. The bot uses `puppeteer-core` which expects Chrome to be pre-installed.
 
-```bash
-#!/usr/bin/env bash
-# Install dependencies
-npm install
+**Option 1: Use Render's Docker Environment (Recommended)**
 
-# Install Chromium dependencies (if needed)
-apt-get update && apt-get install -y \
+Create a `Dockerfile` in your repository:
+
+```dockerfile
+FROM node:18-slim
+
+# Install dependencies for Puppeteer
+RUN apt-get update && apt-get install -y \
+    chromium \
     libnss3 \
     libatk1.0-0 \
     libatk-bridge2.0-0 \
@@ -126,10 +129,24 @@ apt-get update && apt-get install -y \
     libxfixes3 \
     libxrandr2 \
     libgbm1 \
-    libasound2
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+
+ENV CHROMIUM_PATH=/usr/bin/chromium
+
+CMD ["npm", "start"]
 ```
 
-Then set your build command to: `./render-build.sh`
+Then set Render to use Docker as the environment.
+
+**Option 2: Use puppeteer instead of puppeteer-core**
+
+Modify `package.json` to use `puppeteer` instead of `puppeteer-core`. Puppeteer will download its own bundled Chromium during `npm install`.
 
 ### Keep Server Alive
 
